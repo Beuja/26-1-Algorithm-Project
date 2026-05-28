@@ -1,110 +1,53 @@
 # main_simulator.py
 """
-Main Simulator Skeleton and Integration Module for Keyboard Layout Optimization.
+Main Simulator and Integration Module for Keyboard Layout Optimization.
 Integrates Greedy, Simulated Annealing, and Genetic Algorithms.
 Outputs final comparison tables and visualizes best layouts.
 """
 
 import time
-import math
-import random
 from layouts import QWERTY, DVORAK, COLEMAK, visualize_layout
 from cost_function import compute_frequencies, calculate_layout_cost
 from greedy_algorithm import run_greedy_algorithm
 from genetic_algorithm import run_genetic_algorithm
+from simulated_annealing import run_simulated_annealing   # 박서연
+from corpus import load_corpus                             # 박서연
+from visualization import save_all_plots                   # 박서연
 
 # ==========================================
-# 1. Built-in Representative Corpus Sample
-# ==========================================
-DEFAULT_CORPUS = """
-The Genetic Algorithm is a method for solving both constrained and unconstrained optimization problems 
-that is based on natural selection, the process that drives biological evolution. 
-The genetic algorithm repeatedly modifies a population of individual solutions. 
-At each step, the genetic algorithm selects individuals at random from the current population 
-to be parents and uses them to produce the children for the next generation. 
-Over successive generations, the population "evolves" toward an optimal solution. 
-You can apply the genetic algorithm to solve a variety of optimization problems that are not 
-well suited for standard optimization algorithms, including problems in which the objective 
-function is discontinuous, nondifferentiable, stochastic, or highly nonlinear. 
-The genetic algorithm uses three main types of rules at each step to create the next generation 
-from the current population: selection rules select the individuals, called parents, 
-that contribute to the population at the next generation. 
-Crossover rules combine two parents to form children for the next generation. 
-Mutation rules apply random changes to individual parents to form children.
-Keyboard layout optimization is a challenging combinatorial problem because there are 26! 
-possible arrangements of the letters of the English alphabet. 26 factorial is approximately 
-four times ten to the twenty-six, which is an extremely vast search space. 
-Standard methods like brute-force are completely infeasible, making heuristic search 
-algorithms like Greedy search, Simulated Annealing, and Genetic Algorithms highly suited 
-and crucial for finding high-quality optimal keyboard arrangements.
-"""
-
-# ==========================================
-# 2. Team Member Stubs & Implementations
+# 2. Main Integration and Simulation
 # ==========================================
 
-
-def simulated_annealing_optimizer(
-    unigram_counts: dict,
-    bigram_counts: dict,
-    total_chars: int,
-    weights: tuple = (1.0, 2.0, 1.5),
-    initial_temp: float = 10.0,
-    cooling_rate: float = 0.995,
-    iterations: int = 1500
-) -> tuple:
+def run_simulation(
+    corpus_text: str = None,
+    corpus_file: str = None,
+    weights=(1.0, 2.0, 1.5),
+    save_plots: bool = True,
+    show_plots: bool = False,
+):
     """
-    [박서연 팀원 역할 - Simulated Annealing Optimization]
-    Starts with a layout, randomly swaps two keys, and decides whether to accept
-    the new layout based on Metropolis criteria.
+    Runs baselines and all three optimization algorithms to compare keyboard layouts.
+
+    Parameters
+    ----------
+    corpus_text : str, optional
+        Raw corpus string. If None, loads via corpus.py (file or built-in).
+    corpus_file : str, optional
+        Path to a plain-text corpus file (passed to corpus.load_corpus).
+    weights : tuple
+        (alpha, beta, gamma) cost weights.
+    save_plots : bool
+        If True, saves heatmap, convergence, and breakdown plots to ./plots/.
+    show_plots : bool
+        If True, displays plots interactively (blocks execution until closed).
     """
-    current_layout = QWERTY
-    current_cost = calculate_layout_cost(current_layout, unigram_counts, bigram_counts, total_chars, weights)["total_cost"]
-    
-    best_layout = current_layout
-    best_cost = current_cost
-    
-    temp = initial_temp
-    
-    for _ in range(iterations):
-        # Swap two random keys to generate neighbor
-        lst = list(current_layout)
-        i, j = random.sample(range(26), 2)
-        lst[i], lst[j] = lst[j], lst[i]
-        neighbor_layout = "".join(lst)
-        
-        neighbor_cost = calculate_layout_cost(neighbor_layout, unigram_counts, bigram_counts, total_chars, weights)["total_cost"]
-        
-        # Metropolis acceptance criterion
-        delta_e = neighbor_cost - current_cost
-        if delta_e < 0 or random.random() < math.exp(-delta_e / temp):
-            current_layout = neighbor_layout
-            current_cost = neighbor_cost
-            
-            # Keep track of global best
-            if current_cost < best_cost:
-                best_cost = current_cost
-                best_layout = current_layout
-                
-        # Cool down
-        temp *= cooling_rate
-        
-    best_cost_details = calculate_layout_cost(best_layout, unigram_counts, bigram_counts, total_chars, weights)
-    return best_layout, best_cost_details
-
-# ==========================================
-# 3. Main Integration and Simulation
-# ==========================================
-
-def run_simulation(corpus_text: str = None, weights=(1.0, 2.0, 1.5)):
-    """Runs baselines and all three optimization algorithms to compare keyboard layouts."""
     if corpus_text is None:
-        corpus_text = DEFAULT_CORPUS
-        
+        corpus_text = load_corpus(corpus_file)
+
     print("=" * 60)
     print("      KEYBOARD LAYOUT OPTIMIZATION INTEGRATED SIMULATOR")
     print("=" * 60)
-    
+
     # Preprocess text and calculate statistics
     print("[1/5] Preprocessing text corpus...")
     unigrams, bigrams, total_chars = compute_frequencies(corpus_text)
@@ -161,7 +104,10 @@ def run_simulation(corpus_text: str = None, weights=(1.0, 2.0, 1.5)):
     # ------------------------------------------
     print("[4/5] Running Simulated Annealing Optimizer (팀원 박서연)...")
     t0 = time.time()
-    sa_layout, sa_cost_details = simulated_annealing_optimizer(unigrams, bigrams, total_chars, weights)
+    sa_layout, sa_cost_details, sa_history = run_simulated_annealing(
+        unigrams, bigrams, total_chars, weights,
+        initial_temp=10.0, cooling_rate=0.995, iterations=5000,
+    )
     elapsed = time.time() - t0
     results["Sim. Anneal."] = {
         "layout": sa_layout,
@@ -169,7 +115,8 @@ def run_simulation(corpus_text: str = None, weights=(1.0, 2.0, 1.5)):
         "D": sa_cost_details["D"],
         "F": sa_cost_details["F"],
         "P": sa_cost_details["P"],
-        "time": elapsed
+        "time": elapsed,
+        "history": sa_history,
     }
     print(f"      Completed in {elapsed:.4f}s | Cost: {sa_cost_details['total_cost']:.5f}\n")
     
@@ -218,15 +165,35 @@ def run_simulation(corpus_text: str = None, weights=(1.0, 2.0, 1.5)):
         
     print("=" * 70)
     print("Note: Improvement is calculated relative to QWERTY (lower cost is better).\n")
-    
-    # Visualizations
+
+    # Best layout summary
     best_name, best_data = sorted_layouts[0]
     print(f"[BEST] BEST DETECTED KEYBOARD ARRANGEMENT: {best_name}")
     print(f"Cost: {best_data['cost']:.5f} ({((qwerty_cost - best_data['cost']) / qwerty_cost) * 100:.2f}% improvement over QWERTY)")
     print(visualize_layout(best_data["layout"]))
     print("=" * 70)
-    
+
+    # ==========================================
+    # 5. Visualization (박서연)
+    # ==========================================
+    if save_plots or show_plots:
+        print("\n[Visualization] Generating plots (박서연)...")
+        histories = {}
+        for algo in ("Greedy", "Sim. Anneal.", "Gen. Algo."):
+            if algo in results and "history" in results[algo]:
+                histories[algo] = results[algo]["history"]
+
+        save_all_plots(
+            results=results,
+            histories=histories,
+            unigram_counts=unigrams,
+            weights=weights,
+            output_dir="plots",
+            show=show_plots,
+        )
+
     return results
 
+
 if __name__ == "__main__":
-    run_simulation()
+    run_simulation(save_plots=True, show_plots=False)
