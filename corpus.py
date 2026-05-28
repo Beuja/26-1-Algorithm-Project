@@ -1,26 +1,26 @@
 # corpus.py
 """
-Corpus loading and preprocessing module for keyboard layout optimization.
+키보드 배열 최적화용 코퍼스 로딩 및 전처리 모듈.
 [박서연 팀원 담당 모듈]
 
-Provides:
-  - A substantial built-in English corpus for immediate use.
-  - Functions to load corpora from plain-text files.
-  - A lightweight preprocessing step (lowercase + alpha-only filtering).
+제공 기능:
+  - 즉시 사용 가능한 내장 영문 코퍼스.
+  - 일반 텍스트 파일에서 코퍼스를 불러오는 함수.
+  - 소문자 변환 및 알파벳 문자만 추출하는 경량 전처리.
 """
 
 import os
 from cost_function import compute_frequencies
 
 # ---------------------------------------------------------------------------
-# Built-in corpus
-# Sourced from public-domain English literature (Project Gutenberg excerpts):
-#   - Alice's Adventures in Wonderland (Carroll)
-#   - Pride and Prejudice (Austen)
-#   - The Adventures of Sherlock Holmes (Doyle)
-#   - Moby Dick (Melville)
-#   - The Picture of Dorian Gray (Wilde)
-# Concatenated to produce a representative, large-vocabulary English text.
+# 내장 코퍼스
+# 공개 도메인 영문 문학 작품(Project Gutenberg 발췌)으로 구성:
+#   - 이상한 나라의 앨리스 (Carroll)
+#   - 오만과 편견 (Austen)
+#   - 셜록 홈즈의 모험 (Doyle)
+#   - 모비딕 (Melville)
+#   - 도리언 그레이의 초상 (Wilde)
+# 다양한 어휘를 포괄하는 대표적 영문 텍스트를 구성하기 위해 연결함.
 # ---------------------------------------------------------------------------
 
 BUILTIN_CORPUS = """\
@@ -148,71 +148,71 @@ essential steps when evaluating the practical performance of such algorithms.
 
 def load_corpus(file_path: str = None) -> str:
     """
-    Loads an English text corpus for keyboard layout analysis.
+    키보드 배열 분석을 위한 영문 텍스트 코퍼스를 불러온다.
 
-    If `file_path` is provided and exists, reads that plain-text file.
-    Otherwise falls back to the built-in corpus.
+    file_path가 제공되고 파일이 존재하면 해당 파일을 읽는다.
+    그렇지 않으면 내장 코퍼스를 사용한다.
 
-    Parameters
-    ----------
+    매개변수
+    --------
     file_path : str, optional
-        Absolute or relative path to a UTF-8 encoded plain-text file.
-        Any encoding errors are replaced silently.
+        UTF-8 인코딩 텍스트 파일의 절대 경로 또는 상대 경로.
+        인코딩 오류는 자동으로 대체 문자로 처리된다.
 
-    Returns
-    -------
+    반환값
+    ------
     str
-        Raw corpus text (not yet preprocessed).
+        전처리되지 않은 원본 코퍼스 텍스트.
     """
     if file_path:
         expanded = os.path.expanduser(file_path)
         if os.path.isfile(expanded):
             with open(expanded, "r", encoding="utf-8", errors="replace") as f:
                 text = f.read()
-            print(f"[corpus] Loaded '{expanded}' ({len(text):,} characters)")
+            print(f"[corpus] '{expanded}' 파일 로드 완료 ({len(text):,}자)")
             return text
         else:
-            print(f"[corpus] Warning: '{file_path}' not found. Using built-in corpus.")
+            print(f"[corpus] 경고: '{file_path}' 파일을 찾을 수 없습니다. 내장 코퍼스를 사용합니다.")
 
-    print(f"[corpus] Using built-in corpus ({len(BUILTIN_CORPUS):,} characters)")
+    print(f"[corpus] 내장 코퍼스 사용 ({len(BUILTIN_CORPUS):,}자)")
     return BUILTIN_CORPUS
 
 
 def get_corpus_stats(text: str) -> tuple:
     """
-    Convenience wrapper: returns (unigram_counts, bigram_counts, total_chars).
+    편의 래퍼 함수: (unigram_counts, bigram_counts, total_chars)를 반환한다.
 
-    Parameters
-    ----------
+    매개변수
+    --------
     text : str
-        Raw corpus text (may contain numbers, punctuation, etc.).
+        숫자, 구두점 등이 포함된 원본 코퍼스 텍스트.
 
-    Returns
-    -------
+    반환값
+    ------
     tuple
-        (unigram_counts, bigram_counts, total_chars) as produced by
-        cost_function.compute_frequencies.
+        cost_function.compute_frequencies가 반환하는
+        (unigram_counts, bigram_counts, total_chars) 튜플.
     """
     unigrams, bigrams, total = compute_frequencies(text)
-    print(f"[corpus] Preprocessed: {total:,} alpha chars | "
-          f"{len(unigrams)} unigrams | {len(bigrams):,} bigrams")
+    print(f"[corpus] 전처리 완료: 알파벳 {total:,}자 | "
+          f"유니그램 {len(unigrams)}종 | 바이그램 {len(bigrams):,}종")
     return unigrams, bigrams, total
 
 
 def print_top_stats(unigram_counts: dict, bigram_counts: dict, top_n: int = 10):
-    """Prints top-N unigrams and bigrams for inspection."""
+    """상위 N개 유니그램과 바이그램을 출력한다."""
     total_uni = sum(unigram_counts.values())
     total_bi = sum(bigram_counts.values())
 
     top_uni = sorted(unigram_counts.items(), key=lambda x: x[1], reverse=True)[:top_n]
     top_bi = sorted(bigram_counts.items(), key=lambda x: x[1], reverse=True)[:top_n]
 
-    print(f"\nTop {top_n} Unigrams (out of {len(unigram_counts)}):")
+    print(f"\n상위 {top_n}개 유니그램 (전체 {len(unigram_counts)}종):")
     for char, count in top_uni:
         bar = "#" * int(30 * count / total_uni)
         print(f"  '{char}': {count:>6} ({100*count/total_uni:5.2f}%)  {bar}")
 
-    print(f"\nTop {top_n} Bigrams (out of {len(bigram_counts):,}):")
+    print(f"\n상위 {top_n}개 바이그램 (전체 {len(bigram_counts):,}종):")
     for (c1, c2), count in top_bi:
         bar = "#" * int(30 * count / total_bi)
         print(f"  '{c1}{c2}': {count:>6} ({100*count/total_bi:5.2f}%)  {bar}")
