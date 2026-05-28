@@ -10,6 +10,7 @@ import math
 import random
 from layouts import QWERTY, DVORAK, COLEMAK, visualize_layout
 from cost_function import compute_frequencies, calculate_layout_cost
+from greedy_algorithm import run_greedy_algorithm
 from genetic_algorithm import run_genetic_algorithm
 
 # ==========================================
@@ -42,46 +43,6 @@ and crucial for finding high-quality optimal keyboard arrangements.
 # 2. Team Member Stubs & Implementations
 # ==========================================
 
-def greedy_optimizer(unigram_counts: dict, bigram_counts: dict, total_chars: int, weights: tuple = (1.0, 2.0, 1.5)) -> tuple:
-    """
-    [김호재 팀장 역할 - Greedy / Hill Climbing Local Search]
-    Starting from QWERTY layout, iteratively evaluates all possible 2-key swaps.
-    If a swap reduces the cost, it adopts the swap.
-    Repeats until a local minimum is reached.
-    """
-    current_layout = QWERTY
-    current_cost = calculate_layout_cost(current_layout, unigram_counts, bigram_counts, total_chars, weights)["total_cost"]
-    
-    improved = True
-    while improved:
-        improved = False
-        best_swap_layout = current_layout
-        best_swap_cost = current_cost
-        
-        # Try all unique pair swaps (26 * 25 / 2 = 325 swaps per iteration)
-        lst = list(current_layout)
-        for i in range(26):
-            for j in range(i + 1, 26):
-                # Perform swap
-                lst[i], lst[j] = lst[j], lst[i]
-                test_layout = "".join(lst)
-                test_cost = calculate_layout_cost(test_layout, unigram_counts, bigram_counts, total_chars, weights)["total_cost"]
-                
-                # Check improvement
-                if test_cost < best_swap_cost:
-                    best_swap_cost = test_cost
-                    best_swap_layout = test_layout
-                    improved = True
-                
-                # Revert swap
-                lst[i], lst[j] = lst[j], lst[i]
-                
-        if improved:
-            current_layout = best_swap_layout
-            current_cost = best_swap_cost
-            
-    best_cost_details = calculate_layout_cost(current_layout, unigram_counts, bigram_counts, total_chars, weights)
-    return current_layout, best_cost_details
 
 def simulated_annealing_optimizer(
     unigram_counts: dict,
@@ -180,7 +141,9 @@ def run_simulation(corpus_text: str = None, weights=(1.0, 2.0, 1.5)):
     # ------------------------------------------
     print("[3/5] Running Greedy Optimizer (팀장 김호재)...")
     t0 = time.time()
-    greedy_layout, greedy_cost_details = greedy_optimizer(unigrams, bigrams, total_chars, weights)
+    greedy_layout, greedy_cost_details, greedy_history = run_greedy_algorithm(
+        unigrams, bigrams, total_chars, weights, num_restarts=3
+    )
     elapsed = time.time() - t0
     results["Greedy"] = {
         "layout": greedy_layout,
@@ -188,7 +151,8 @@ def run_simulation(corpus_text: str = None, weights=(1.0, 2.0, 1.5)):
         "D": greedy_cost_details["D"],
         "F": greedy_cost_details["F"],
         "P": greedy_cost_details["P"],
-        "time": elapsed
+        "time": elapsed,
+        "history": greedy_history
     }
     print(f"      Completed in {elapsed:.4f}s | Cost: {greedy_cost_details['total_cost']:.5f}\n")
     
@@ -257,7 +221,7 @@ def run_simulation(corpus_text: str = None, weights=(1.0, 2.0, 1.5)):
     
     # Visualizations
     best_name, best_data = sorted_layouts[0]
-    print(f"🏆 BEST DETECTED KEYBOARD ARRANGEMENT: {best_name} 🏆")
+    print(f"[BEST] BEST DETECTED KEYBOARD ARRANGEMENT: {best_name}")
     print(f"Cost: {best_data['cost']:.5f} ({((qwerty_cost - best_data['cost']) / qwerty_cost) * 100:.2f}% improvement over QWERTY)")
     print(visualize_layout(best_data["layout"]))
     print("=" * 70)
