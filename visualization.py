@@ -200,7 +200,7 @@ def plot_heatmaps_comparison(
             layout_freq[ch] = freq.get(ch, 0.0)
         _draw_keyboard(
             ax, layout_str, layout_freq,
-            title=f"타건 빈도 히트맵 — {name}",
+            title=f"Key Frequency Heatmap — {name}",
             vmin=global_vmin, vmax=global_vmax,
         )
 
@@ -215,9 +215,9 @@ def plot_heatmaps_comparison(
 
 def plot_convergence(
     histories: dict,
-    title: str = "알고리즘 수렴 속도 비교",
-    xlabel: str = "기록 스텝",
-    ylabel: str = "최적 비용 (낮을수록 좋음)",
+    title: str = "Algorithm Convergence Comparison",
+    xlabel: str = "Step",
+    ylabel: str = "Best Cost (lower is better)",
     save_path: str = None,
     show: bool = True,
 ):
@@ -317,17 +317,17 @@ def plot_cost_breakdown(
     y = range(len(names))
     fig, ax = plt.subplots(figsize=(9, max(4, len(names) * 0.85)))
 
-    bars_d = ax.barh(y, d_vals, color="#3498db", label=f"이동거리 D (×{alpha})")
+    bars_d = ax.barh(y, d_vals, color="#3498db", label=f"Distance D (x{alpha})")
     bars_f = ax.barh(y, f_vals, left=d_vals, color="#e74c3c",
-                     label=f"동일손가락 피로도 F (×{beta})")
+                     label=f"Same-Finger Fatigue F (x{beta})")
     left_p = [d + f for d, f in zip(d_vals, f_vals)]
     bars_p = ax.barh(y, p_vals, left=left_p, color="#f39c12",
-                     label=f"한손 연속 패널티 P (×{gamma})")
+                     label=f"Same-Hand Penalty P (x{gamma})")
 
     ax.set_yticks(list(y))
     ax.set_yticklabels(names, fontsize=11)
-    ax.set_xlabel("가중 비용 구성 요소", fontsize=11)
-    ax.set_title("배열별 비용 구성 분석 (낮을수록 좋음)", fontsize=13, fontweight="bold")
+    ax.set_xlabel("Weighted Cost Components", fontsize=11)
+    ax.set_title("Cost Breakdown by Layout (lower is better)", fontsize=13, fontweight="bold")
     ax.legend(loc="lower right", fontsize=10)
     ax.grid(True, axis="x", linestyle="--", alpha=0.5)
     ax.spines["top"].set_visible(False)
