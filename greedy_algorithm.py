@@ -65,7 +65,8 @@ def _hill_climb(
         if verbose:
             print(f"        반복 {iteration:>2}: 비용 = {current_cost:.6f}")
 
-    return current_layout, current_cost, history
+    call_count = 1 + 325 * iteration  # 초기 1회 + 매 반복 325회
+    return current_layout, current_cost, history, call_count
 
 
 def run_greedy_algorithm(
@@ -115,7 +116,7 @@ def run_greedy_algorithm(
 
     if verbose:
         print(f"      [실행 0 / QWERTY 초기화] 힐 클라이밍 시작...")
-    best_layout, best_cost, history = _hill_climb(
+    best_layout, best_cost, history, total_calls = _hill_climb(
         init, unigram_counts, bigram_counts, total_chars, weights, verbose
     )
 
@@ -123,9 +124,10 @@ def run_greedy_algorithm(
         random_init = "".join(random.sample(_ALPHABET, 26))
         if verbose:
             print(f"      [실행 {restart_idx + 1} / 랜덤 재시작] 힐 클라이밍 시작...")
-        candidate_layout, candidate_cost, candidate_history = _hill_climb(
+        candidate_layout, candidate_cost, candidate_history, calls = _hill_climb(
             random_init, unigram_counts, bigram_counts, total_chars, weights, verbose
         )
+        total_calls += calls
         if candidate_cost < best_cost:
             best_layout = candidate_layout
             best_cost = candidate_cost
@@ -133,10 +135,11 @@ def run_greedy_algorithm(
             if verbose:
                 print(f"        -> 전역 최솟값 갱신: {best_cost:.6f}")
 
+    total_calls += 1  # 최종 calculate_layout_cost 호출
     best_cost_details = calculate_layout_cost(
         best_layout, unigram_counts, bigram_counts, total_chars, weights
     )
-    return best_layout, best_cost_details, history
+    return best_layout, best_cost_details, history, total_calls
 
 
 if __name__ == "__main__":

@@ -12,9 +12,9 @@ from layouts import QWERTY, DVORAK, COLEMAK, visualize_layout
 from cost_function import compute_frequencies, calculate_layout_cost
 from greedy_algorithm import run_greedy_algorithm
 from genetic_algorithm import run_genetic_algorithm
-from simulated_annealing import run_simulated_annealing   # 박서연
-from corpus import load_corpus                             # 박서연
-from visualization import save_all_plots                   # 박서연
+from simulated_annealing import run_simulated_annealing
+from corpus import load_corpus
+from visualization import save_all_plots
 
 # ==========================================
 # 메인 통합 시뮬레이션
@@ -86,7 +86,7 @@ def run_simulation(
     # ------------------------------------------
     print("[3/5] 탐욕 알고리즘 실행 중 (팀장 김호재)...")
     t0 = time.time()
-    greedy_layout, greedy_cost_details, greedy_history = run_greedy_algorithm(
+    greedy_layout, greedy_cost_details, greedy_history, greedy_calls = run_greedy_algorithm(
         unigrams, bigrams, total_chars, weights, num_restarts=3
     )
     elapsed = time.time() - t0
@@ -97,18 +97,19 @@ def run_simulation(
         "F": greedy_cost_details["F"],
         "P": greedy_cost_details["P"],
         "time": elapsed,
+        "calls": greedy_calls,
         "history": greedy_history
     }
-    print(f"      완료: {elapsed:.4f}초 | 비용: {greedy_cost_details['total_cost']:.5f}\n")
+    print(f"      완료: {elapsed:.4f}초 | 비용: {greedy_cost_details['total_cost']:.5f} | 호출: {greedy_calls:,}회\n")
 
     # ------------------------------------------
     # 단계 C: 담금질 기법 실행 (박서연)
     # ------------------------------------------
-    print("[4/5] 담금질 기법 실행 중 (팀원 박서연)...")
+    print("[4/5] 담금질 기법 실행 중...")
     t0 = time.time()
-    sa_layout, sa_cost_details, sa_history = run_simulated_annealing(
+    sa_layout, sa_cost_details, sa_history, sa_calls = run_simulated_annealing(
         unigrams, bigrams, total_chars, weights,
-        initial_temp=10.0, cooling_rate=0.995, iterations=5000,
+        initial_temp=10.0, cooling_rate=0.9992, iterations=15000,
     )
     elapsed = time.time() - t0
     results["Sim. Anneal."] = {
@@ -118,22 +119,21 @@ def run_simulation(
         "F": sa_cost_details["F"],
         "P": sa_cost_details["P"],
         "time": elapsed,
+        "calls": sa_calls,
         "history": sa_history,
     }
-    print(f"      완료: {elapsed:.4f}초 | 비용: {sa_cost_details['total_cost']:.5f}\n")
+    print(f"      완료: {elapsed:.4f}초 | 비용: {sa_cost_details['total_cost']:.5f} | 호출: {sa_calls:,}회\n")
 
     # ------------------------------------------
     # 단계 D: 유전 알고리즘 실행 (정종욱)
     # ------------------------------------------
     print("[5/5] 유전 알고리즘 실행 중 (팀원 정종욱)...")
     t0 = time.time()
-    # 기준 배열을 시드로 주입하여 최소 성능 기준을 보장
-    seeds = [QWERTY, DVORAK, COLEMAK, greedy_layout, sa_layout]
-    ga_layout, ga_cost_details, ga_history = run_genetic_algorithm(
+    ga_layout, ga_cost_details, ga_history, ga_calls = run_genetic_algorithm(
         unigrams, bigrams, total_chars, weights,
         pop_size=100, generations=150,
         crossover_rate=0.85, mutation_rate=0.25,
-        elitism_count=5, seed_layouts=seeds
+        elitism_count=5,
     )
     elapsed = time.time() - t0
     results["Gen. Algo."] = {
@@ -142,9 +142,10 @@ def run_simulation(
         "D": ga_cost_details["D"],
         "F": ga_cost_details["F"],
         "P": ga_cost_details["P"],
-        "time": elapsed
+        "time": elapsed,
+        "calls": ga_calls,
     }
-    print(f"      완료: {elapsed:.4f}초 | 비용: {ga_cost_details['total_cost']:.5f}\n")
+    print(f"      완료: {elapsed:.4f}초 | 비용: {ga_cost_details['total_cost']:.5f} | 호출: {ga_calls:,}회\n")
 
     # ==========================================
     # 최종 성능 비교표 출력
@@ -153,7 +154,7 @@ def run_simulation(
     print("                   FINAL PERFORMANCE EVALUATION REPORT")
     print("=" * 70)
 
-    header = f"{'Layout Name':<13} | {'Total Cost':<10} | {'Distance (D)':<12} | {'Fatigue (F)':<11} | {'Penalty (P)':<11} | {'Improv. %':<9} | {'Runtime'}"
+    header = f"{'Layout Name':<13} | {'Total Cost':<10} | {'Distance (D)':<12} | {'Fatigue (F)':<11} | {'Penalty (P)':<11} | {'Improv. %':<9} | {'Calls':<8} | {'Runtime'}"
     separator = "-" * len(header)
     print(header)
     print(separator)
@@ -164,7 +165,8 @@ def run_simulation(
     for name, data in sorted_layouts:
         improv = ((qwerty_cost - data["cost"]) / qwerty_cost) * 100
         time_str = f"{data['time']:.4f}s" if data['time'] > 0 else "N/A"
-        print(f"{name:<13} | {data['cost']:<10.5f} | {data['D']:<12.5f} | {data['F']:<11.5f} | {data['P']:<11.5f} | {improv:>7.2f}% | {time_str}")
+        calls_str = f"{data['calls']:,}" if "calls" in data else "-"
+        print(f"{name:<13} | {data['cost']:<10.5f} | {data['D']:<12.5f} | {data['F']:<11.5f} | {data['P']:<11.5f} | {improv:>7.2f}% | {calls_str:<8} | {time_str}")
 
     print("=" * 70)
     print("Note: Improvement is calculated relative to QWERTY (lower cost is better).\n")
@@ -180,7 +182,7 @@ def run_simulation(
     # 시각화 (박서연)
     # ==========================================
     if save_plots or show_plots:
-        print("\n[시각화] 그래프 생성 중 (팀원 박서연)...")
+        print("\n[시각화] 그래프 생성 중...")
         histories = {}
         for algo in ("Greedy", "Sim. Anneal.", "Gen. Algo."):
             if algo in results and "history" in results[algo]:

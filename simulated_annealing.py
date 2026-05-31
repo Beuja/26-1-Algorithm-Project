@@ -146,10 +146,11 @@ def run_simulated_annealing(
         print(f"      총 채택: {accepted} / {iterations} "
               f"({100*accepted/iterations:.1f}%) | 개선: {improved}")
 
+    total_calls = step + 2  # 초기 1회 + 루프 step회 + 최종 1회
     best_cost_details = calculate_layout_cost(
         best_layout, unigram_counts, bigram_counts, total_chars, weights
     )
-    return best_layout, best_cost_details, history
+    return best_layout, best_cost_details, history, total_calls
 
 
 if __name__ == "__main__":

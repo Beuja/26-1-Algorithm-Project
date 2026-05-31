@@ -179,7 +179,8 @@ def run_genetic_algorithm(
     best_layout = population[best_final_idx]
     best_cost_details = calculate_layout_cost(best_layout, unigram_counts, bigram_counts, total_chars, weights)
 
-    return best_layout, best_cost_details, history
+    total_calls = pop_size * generations + pop_size + 1  # 세대별 + 최종평가 + 최종 1회
+    return best_layout, best_cost_details, history, total_calls
 
 if __name__ == "__main__":
     # 교차 및 돌연변이 동작 확인용 간단 테스트
