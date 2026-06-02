@@ -1,10 +1,4 @@
 # full_evaluation.py
-"""
-전체 평가 스크립트.
-1. corpus.py 텍스트로 3개 알고리즘 실행 -> 최적 배열 도출
-2. new_corpus.py 텍스트(동일 분량)로 6개 배열 교차검증
-3. 6개 키보드 레이아웃 이미지 + 비교 표 + 막대 그래프 저장
-"""
 
 import os
 import time
@@ -31,9 +25,6 @@ WEIGHTS = (1.0, 2.0, 1.5)
 OUT_DIR = "plots"
 os.makedirs(OUT_DIR, exist_ok=True)
 
-# ──────────────────────────────────────────────
-# 1. corpus 텍스트로 알고리즘 실행
-# ──────────────────────────────────────────────
 print("=" * 60)
 print("  [Phase 1] corpus 텍스트로 알고리즘 최적 배열 도출")
 print("=" * 60)
@@ -67,25 +58,19 @@ ga_layout, ga_cost, ga_hist, ga_calls = run_genetic_algorithm(
 )
 print(f"  완료 ({time.time()-t0:.2f}s) | 비용: {ga_cost['total_cost']:.5f} | 호출: {ga_calls:,}회\n")
 
-# 6개 배열 정의
-# Dvorak·Colemak은 시각화용 coords dict, 나머지는 26자 문자열
 LAYOUTS = {
     "QWERTY":      QWERTY,
-    "Dvorak":      DVORAK_COORDS,   # 확장 좌표 dict (실제 물리 위치)
-    "Colemak":     COLEMAK_COORDS,  # 확장 좌표 dict (실제 물리 위치)
+    "Dvorak":      DVORAK_COORDS,
+    "Colemak":     COLEMAK_COORDS,
     "Greedy":      greedy_layout,
     "Sim.Anneal.": sa_layout,
     "Gen.Algo.":   ga_layout,
 }
-# Dvorak·Colemak 확장 비용 계산용 매핑
 _EXTENDED = {
     "Dvorak":  (DVORAK_COORDS,  DVORAK_FINGERS,  DVORAK_HANDS),
     "Colemak": (COLEMAK_COORDS, COLEMAK_FINGERS, COLEMAK_HANDS),
 }
 
-# ──────────────────────────────────────────────
-# 2. corpus 비용 계산
-# ──────────────────────────────────────────────
 def _calc_cost(name, layout, uni, bi, tot):
     if name in _EXTENDED:
         coords, fingers, hands = _EXTENDED[name]
@@ -96,9 +81,6 @@ corpus_results = {}
 for name, layout in LAYOUTS.items():
     corpus_results[name] = _calc_cost(name, layout, uni_c, bi_c, tot_c)
 
-# ──────────────────────────────────────────────
-# 3. new corpus 비용 계산
-# ──────────────────────────────────────────────
 print("=" * 60)
 print("  [Phase 2] 새 텍스트로 6개 배열 교차검증")
 print("=" * 60)
@@ -112,22 +94,18 @@ for name, layout in LAYOUTS.items():
     new_results[name] = cd
     print(f"  {name:<12}: {cd['total_cost']:.5f}")
 
-# ──────────────────────────────────────────────
-# 4. 키보드 레이아웃 이미지 (6개)
-# ──────────────────────────────────────────────
 ROW_COLORS = {
-    "top":    "#AED6F1",  # 1행 - 연파랑
-    "home":   "#A9DFBF",  # 2행(홈로우) - 연초록
-    "bottom": "#FAD7A0",  # 3행 - 연주황
+    "top":    "#AED6F1",
+    "home":   "#A9DFBF",
+    "bottom": "#FAD7A0",
 }
 KEY_W, KEY_H = 0.85, 0.70
 
 def draw_layout_diagram(ax, layout, title):
-    # layout이 문자열이면 26슬롯 변환, dict이면 그대로 사용 (확장 좌표)
     if isinstance(layout, str):
         coords = layout_str_to_coord_dict(layout)
     else:
-        coords = layout  # {char: (x, y)} dict
+        coords = layout
 
     xmax = max(x for x, y in coords.values())
     xlim_max = max(9.7, xmax + 0.7)
@@ -176,9 +154,6 @@ fig.savefig(kb_path, dpi=150, bbox_inches="tight")
 plt.close(fig)
 print(f"\n  [저장] {kb_path}")
 
-# ──────────────────────────────────────────────
-# 5. 비교 표 이미지
-# ──────────────────────────────────────────────
 qw_corpus = corpus_results["QWERTY"]["total_cost"]
 qw_new    = new_results["QWERTY"]["total_cost"]
 
@@ -212,12 +187,10 @@ tbl.auto_set_font_size(False)
 tbl.set_fontsize(11)
 tbl.scale(1.2, 1.8)
 
-# 헤더 색상
 for j in range(len(col_labels)):
     tbl[0, j].set_facecolor("#2C3E50")
     tbl[0, j].set_text_props(color="white", fontweight="bold")
 
-# 행 색상 (알고리즘 배열 강조)
 algo_names = {"Greedy", "Sim.Anneal.", "Gen.Algo."}
 for i, name in enumerate(order):
     fc = "#EBF5FB" if name in algo_names else "#FDFEFE"
@@ -232,9 +205,6 @@ fig.savefig(tbl_path, dpi=150, bbox_inches="tight")
 plt.close(fig)
 print(f"  [저장] {tbl_path}")
 
-# ──────────────────────────────────────────────
-# 6. 막대 그래프 — corpus vs new text 총 비용
-# ──────────────────────────────────────────────
 COLORS = {
     "QWERTY":      "#E74C3C",
     "Dvorak":      "#E67E22",
@@ -281,9 +251,6 @@ fig.savefig(bar_path, dpi=150, bbox_inches="tight")
 plt.close(fig)
 print(f"  [저장] {bar_path}")
 
-# ──────────────────────────────────────────────
-# 7. 터미널 출력 요약
-# ──────────────────────────────────────────────
 print("\n" + "=" * 70)
 print("  FINAL SUMMARY")
 print("=" * 70)

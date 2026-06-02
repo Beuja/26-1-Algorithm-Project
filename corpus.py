@@ -1,27 +1,9 @@
 # corpus.py
-"""
-키보드 배열 최적화용 코퍼스 로딩 및 전처리 모듈.
-[박서연 팀원 담당 모듈]
-
-제공 기능:
-  - 즉시 사용 가능한 내장 영문 코퍼스.
-  - 일반 텍스트 파일에서 코퍼스를 불러오는 함수.
-  - 소문자 변환 및 알파벳 문자만 추출하는 경량 전처리.
-"""
+# 내장 코퍼스: Project Gutenberg 공개 도메인 발췌
+#   Alice in Wonderland / Pride and Prejudice / Sherlock Holmes / Moby-Dick / Dorian Gray
 
 import os
 from cost_function import compute_frequencies
-
-# ---------------------------------------------------------------------------
-# 내장 코퍼스
-# 공개 도메인 영문 문학 작품(Project Gutenberg 발췌)으로 구성:
-#   - 이상한 나라의 앨리스 (Carroll)
-#   - 오만과 편견 (Austen)
-#   - 셜록 홈즈의 모험 (Doyle)
-#   - 모비딕 (Melville)
-#   - 도리언 그레이의 초상 (Wilde)
-# 다양한 어휘를 포괄하는 대표적 영문 텍스트를 구성하기 위해 연결함.
-# ---------------------------------------------------------------------------
 
 BUILTIN_CORPUS = """\
 Alice was beginning to get very tired of sitting by her sister on the bank,
@@ -147,23 +129,6 @@ essential steps when evaluating the practical performance of such algorithms.
 
 
 def load_corpus(file_path: str = None) -> str:
-    """
-    키보드 배열 분석을 위한 영문 텍스트 코퍼스를 불러온다.
-
-    file_path가 제공되고 파일이 존재하면 해당 파일을 읽는다.
-    그렇지 않으면 내장 코퍼스를 사용한다.
-
-    매개변수
-    --------
-    file_path : str, optional
-        UTF-8 인코딩 텍스트 파일의 절대 경로 또는 상대 경로.
-        인코딩 오류는 자동으로 대체 문자로 처리된다.
-
-    반환값
-    ------
-    str
-        전처리되지 않은 원본 코퍼스 텍스트.
-    """
     if file_path:
         expanded = os.path.expanduser(file_path)
         if os.path.isfile(expanded):
@@ -179,20 +144,6 @@ def load_corpus(file_path: str = None) -> str:
 
 
 def get_corpus_stats(text: str) -> tuple:
-    """
-    편의 래퍼 함수: (unigram_counts, bigram_counts, total_chars)를 반환한다.
-
-    매개변수
-    --------
-    text : str
-        숫자, 구두점 등이 포함된 원본 코퍼스 텍스트.
-
-    반환값
-    ------
-    tuple
-        cost_function.compute_frequencies가 반환하는
-        (unigram_counts, bigram_counts, total_chars) 튜플.
-    """
     unigrams, bigrams, total = compute_frequencies(text)
     print(f"[corpus] 전처리 완료: 알파벳 {total:,}자 | "
           f"유니그램 {len(unigrams)}종 | 바이그램 {len(bigrams):,}종")

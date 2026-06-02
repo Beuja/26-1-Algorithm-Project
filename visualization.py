@@ -1,18 +1,3 @@
-# visualization.py
-"""
-키보드 배열 최적화 프로젝트 시각화 모듈 (히트맵 및 수렴 그래프).
-[박서연 팀원 담당 모듈]
-
-제공 함수:
-  - plot_heatmap          : 단일 키보드 배열의 타건 빈도 히트맵 출력.
-  - plot_heatmaps_comparison : 여러 배열을 동일 색상 척도로 나란히 비교.
-  - plot_convergence      : 알고리즘별 수렴 곡선을 한 그래프에 표시.
-  - plot_cost_breakdown   : D / F / P 비용 구성 요소 누적 가로 막대 차트.
-  - save_all_plots        : 메인 시뮬레이터에서 호출하는 일괄 저장 래퍼.
-
-의존성: matplotlib (pip install matplotlib)
-"""
-
 import math
 import os
 import matplotlib
@@ -30,20 +15,12 @@ from layouts import (
     COLEMAK_COORDS,
 )
 
-# ---------------------------------------------------------------------------
-# 내부 헬퍼
-# ---------------------------------------------------------------------------
-
-_KEY_W = 0.85        # 키 너비 (배열 좌표 단위)
-_KEY_H = 0.70        # 키 높이
-_CMAP = "YlOrRd"     # 히트맵 색상 (노랑 → 주황 → 빨강, 빈도 높을수록 진함)
+_KEY_W = 0.85
+_KEY_H = 0.70
+_CMAP = "YlOrRd"
 
 
 def _draw_keyboard(ax, layout, color_values: dict, title: str, vmin=None, vmax=None):
-    """
-    ax 위에 키를 그리고, color_values(문자 → 실수)에 따라 색을 입힌다.
-    layout은 26자 문자열 또는 {문자: (x, y)} 딕셔너리를 모두 허용한다.
-    """
     all_vals = list(color_values.values())
     if vmin is None:
         vmin = min(all_vals)
@@ -53,7 +30,7 @@ def _draw_keyboard(ax, layout, color_values: dict, title: str, vmin=None, vmax=N
     norm = Normalize(vmin=vmin, vmax=vmax)
     cmap = plt.get_cmap(_CMAP)
 
-    # 문자열이면 QWERTY 26슬롯 변환, 딕셔너리면 그대로 사용 (확장 좌표)
+    # 문자열이면 QWERTY 26슬롯 변환, 딕셔너리면 확장 좌표로 직접 사용
     if isinstance(layout, str):
         coords = layout_str_to_coord_dict(layout)
     else:
@@ -77,23 +54,13 @@ def _draw_keyboard(ax, layout, color_values: dict, title: str, vmin=None, vmax=N
         luminance = 0.299 * r + 0.587 * g + 0.114 * b
         text_color = "black" if luminance > 0.5 else "white"
 
-        ax.text(
-            x, y + 0.07,
-            char.upper(),
-            ha="center", va="center",
-            fontsize=11, fontweight="bold",
-            color=text_color,
-        )
+        ax.text(x, y + 0.07, char.upper(),
+                ha="center", va="center", fontsize=11, fontweight="bold", color=text_color)
 
         pct = val * 100
-        ax.text(
-            x, y - 0.18,
-            f"{pct:.1f}%" if pct >= 0.1 else "",
-            ha="center", va="center",
-            fontsize=6.5, color=text_color,
-        )
+        ax.text(x, y - 0.18, f"{pct:.1f}%" if pct >= 0.1 else "",
+                ha="center", va="center", fontsize=6.5, color=text_color)
 
-    # 확장 레이아웃(Dvorak 등)은 x축 범위를 동적으로 계산
     xmax = max(x for x, y in coords.values())
     ax.set_xlim(-0.7, max(9.7, xmax + 0.7))
     ax.set_ylim(-0.65, 2.65)
@@ -107,10 +74,6 @@ def _draw_keyboard(ax, layout, color_values: dict, title: str, vmin=None, vmax=N
                  fraction=0.03, label="Key Usage Frequency")
 
 
-# ---------------------------------------------------------------------------
-# 공개 API
-# ---------------------------------------------------------------------------
-
 def plot_heatmap(
     layout_str: str,
     unigram_counts: dict,
@@ -118,24 +81,6 @@ def plot_heatmap(
     save_path: str = None,
     show: bool = True,
 ):
-    """
-    주어진 키보드 배열의 타건 빈도 히트맵을 렌더링한다.
-
-    색이 진할수록(빨간색) 자주 타건되는 키, 옅을수록(노란색) 적게 타건되는 키.
-
-    매개변수
-    --------
-    layout_str : str
-        26자 배열 문자열.
-    unigram_counts : dict
-        코퍼스에서 추출한 {문자: 빈도수} 딕셔너리.
-    title : str
-        그래프 제목.
-    save_path : str, optional
-        지정하면 해당 경로에 파일 저장 (PNG/PDF/SVG 지원).
-    show : bool
-        True이면 plt.show() 호출. 배치 실행 시 False로 설정.
-    """
     total = sum(unigram_counts.values()) or 1
     freq = {char: count / total for char, count in unigram_counts.items()}
 
@@ -162,20 +107,6 @@ def plot_heatmaps_comparison(
     save_path: str = None,
     show: bool = True,
 ):
-    """
-    여러 배열의 히트맵을 동일한 색상 척도로 세로로 나란히 렌더링한다.
-
-    매개변수
-    --------
-    layouts : dict
-        {배열명: 배열문자열} 예: {"QWERTY": "qwerty...", "SA 결과": "..."}
-    unigram_counts : dict
-        공유 {문자: 빈도수} 딕셔너리.
-    save_path : str, optional
-        저장 파일 경로.
-    show : bool
-        plt.show() 호출 여부.
-    """
     total = sum(unigram_counts.values()) or 1
     freq = {char: count / total for char, count in unigram_counts.items()}
 
@@ -184,7 +115,6 @@ def plot_heatmaps_comparison(
     if n == 1:
         axes = [axes]
 
-    # 모든 배열에 동일한 색상 범위 적용
     global_vmin = min(freq.values())
     global_vmax = max(freq.values())
 
@@ -216,23 +146,6 @@ def plot_convergence(
     save_path: str = None,
     show: bool = True,
 ):
-    """
-    하나 이상의 알고리즘 수렴 곡선을 같은 축에 플롯한다.
-
-    매개변수
-    --------
-    histories : dict
-        {알고리즘명: list[float]} 예: {"SA": [...], "GA": [...]}
-        각 리스트는 시간 순서대로 기록된 최적 비용값 시퀀스.
-    title : str
-        그래프 제목.
-    xlabel, ylabel : str
-        x축, y축 레이블.
-    save_path : str, optional
-        저장 파일 경로.
-    show : bool
-        plt.show() 호출 여부.
-    """
     colors = ["#e74c3c", "#3498db", "#2ecc71", "#f39c12", "#9b59b6", "#1abc9c"]
     linestyles = ["-", "--", "-.", ":", "-", "--"]
 
@@ -245,10 +158,7 @@ def plot_convergence(
         color = colors[idx % len(colors)]
         ls = linestyles[idx % len(linestyles)]
 
-        ax.plot(x, hist, label=name, color=color, linestyle=ls,
-                linewidth=1.8, alpha=0.9)
-
-        # 최종 수렴값 표시
+        ax.plot(x, hist, label=name, color=color, linestyle=ls, linewidth=1.8, alpha=0.9)
         ax.annotate(
             f"{hist[-1]:.4f}",
             xy=(x[-1], hist[-1]),
@@ -281,43 +191,25 @@ def plot_cost_breakdown(
     save_path: str = None,
     show: bool = True,
 ):
-    """
-    배열별 D / F / P 비용 구성 요소를 누적 가로 막대 차트로 렌더링한다.
-
-    매개변수
-    --------
-    results : dict
-        {배열명: {"D": float, "F": float, "P": float, "cost": float}}
-        메인 시뮬레이터의 results 딕셔너리를 그대로 전달.
-    weights : tuple
-        (alpha, beta, gamma) 각 구성 요소의 시각화 스케일에 사용.
-    save_path : str, optional
-        저장 파일 경로.
-    show : bool
-        plt.show() 호출 여부.
-    """
     alpha, beta, gamma = weights
     names = list(results.keys())
     d_vals = [results[n]["D"] * alpha for n in names]
     f_vals = [results[n]["F"] * beta  for n in names]
     p_vals = [results[n]["P"] * gamma for n in names]
 
-    # 총 비용 기준 오름차순 정렬
     order = sorted(range(len(names)), key=lambda i: d_vals[i] + f_vals[i] + p_vals[i])
-    names   = [names[i]  for i in order]
-    d_vals  = [d_vals[i] for i in order]
-    f_vals  = [f_vals[i] for i in order]
-    p_vals  = [p_vals[i] for i in order]
+    names  = [names[i]  for i in order]
+    d_vals = [d_vals[i] for i in order]
+    f_vals = [f_vals[i] for i in order]
+    p_vals = [p_vals[i] for i in order]
 
     y = range(len(names))
     fig, ax = plt.subplots(figsize=(9, max(4, len(names) * 0.85)))
 
-    bars_d = ax.barh(y, d_vals, color="#3498db", label=f"Distance D (x{alpha})")
-    bars_f = ax.barh(y, f_vals, left=d_vals, color="#e74c3c",
-                     label=f"Same-Finger Fatigue F (x{beta})")
+    ax.barh(y, d_vals, color="#3498db", label=f"Distance D (x{alpha})")
+    ax.barh(y, f_vals, left=d_vals, color="#e74c3c", label=f"Same-Finger Fatigue F (x{beta})")
     left_p = [d + f for d, f in zip(d_vals, f_vals)]
-    bars_p = ax.barh(y, p_vals, left=left_p, color="#f39c12",
-                     label=f"Same-Hand Penalty P (x{gamma})")
+    ax.barh(y, p_vals, left=left_p, color="#f39c12", label=f"Same-Hand Penalty P (x{gamma})")
 
     ax.set_yticks(list(y))
     ax.set_yticklabels(names, fontsize=11)
@@ -345,33 +237,8 @@ def save_all_plots(
     output_dir: str = "plots",
     show: bool = False,
 ):
-    """
-    프로젝트 보고서에 사용되는 표준 그래프 3종을 일괄 생성 및 저장한다.
-
-    생성되는 파일
-    -------------
-    1. plots/heatmap_comparison.png — 모든 배열의 타건 빈도 히트맵 비교.
-    2. plots/convergence.png        — 최적화 알고리즘별 수렴 곡선.
-    3. plots/cost_breakdown.png     — D / F / P 구성 요소 누적 막대 차트.
-
-    매개변수
-    --------
-    results : dict
-        main_simulator.run_simulation()이 반환하는 전체 결과 딕셔너리.
-    histories : dict
-        {알고리즘명: list[float]} 수렴 히스토리.
-    unigram_counts : dict
-        코퍼스 단일문자 빈도 딕셔너리.
-    weights : tuple
-        (alpha, beta, gamma), plot_cost_breakdown에 전달.
-    output_dir : str
-        PNG 파일을 저장할 디렉토리 경로.
-    show : bool
-        각 그래프에서 plt.show() 호출 여부 (자동 실행 시 False).
-    """
     os.makedirs(output_dir, exist_ok=True)
 
-    # 1. 히트맵 비교
     layout_map = {name: data["layout"] for name, data in results.items()}
     plot_heatmaps_comparison(
         layout_map, unigram_counts,
@@ -379,7 +246,6 @@ def save_all_plots(
         show=show,
     )
 
-    # 2. 수렴 그래프
     if histories:
         plot_convergence(
             histories,
@@ -387,7 +253,6 @@ def save_all_plots(
             show=show,
         )
 
-    # 3. 비용 구성 분석 차트
     plot_cost_breakdown(
         results, weights,
         save_path=os.path.join(output_dir, "cost_breakdown.png"),
@@ -396,10 +261,6 @@ def save_all_plots(
 
     print(f"[visualization] 전체 그래프 저장 완료: '{output_dir}/' 디렉토리")
 
-
-# ---------------------------------------------------------------------------
-# 단독 실행 테스트
-# ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
     from cost_function import compute_frequencies
@@ -412,17 +273,8 @@ if __name__ == "__main__":
 
     unigrams, bigrams, total = compute_frequencies(sample)
 
-    print("단일 히트맵 출력 (QWERTY)...")
     plot_heatmap(QWERTY, unigrams, title="QWERTY — 타건 빈도 히트맵", show=True)
 
-    print("비교 히트맵 출력...")
-    plot_heatmaps_comparison(
-        {"QWERTY": QWERTY, "DVORAK": DVORAK, "COLEMAK": COLEMAK},
-        unigrams,
-        show=True,
-    )
-
-    print("수렴 곡선 출력...")
     dummy_sa = [1.5 - 0.3 * math.log(1 + i * 0.1) + 0.02 * (i % 7) for i in range(100)]
     dummy_ga = [1.5 - 0.25 * math.log(1 + i * 0.2) for i in range(60)]
     plot_convergence(

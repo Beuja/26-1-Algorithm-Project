@@ -1,11 +1,4 @@
-# cost_function.py
-"""
-키보드 배열 최적화 비용 함수 구현.
-[김호재 팀장 담당 모듈]
-
-공식: Cost = alpha * D + beta * F + gamma * P
-사전 집계된 문자 및 바이그램 빈도를 이용해 비용을 계산한다.
-"""
+# Cost = alpha * D + beta * F + gamma * P
 
 import math
 from layouts import (
@@ -16,10 +9,6 @@ from layouts import (
 )
 
 def compute_frequencies(text: str):
-    """
-    텍스트를 전처리하고 유니그램 및 바이그램 빈도를 집계한다.
-    소문자 알파벳 26자만 대상으로 한다 (N=26).
-    """
     cleaned_text = [char.lower() for char in text if char.isalpha()]
     total_chars = len(cleaned_text)
 
@@ -35,7 +24,6 @@ def compute_frequencies(text: str):
     return unigram_counts, bigram_counts, total_chars
 
 def euclidean_distance(p1, p2):
-    """두 2D 좌표 사이의 유클리드 거리를 계산한다."""
     return math.sqrt((p1[0] - p2[0])**2 + (p1[1] - p2[1])**2)
 
 def calculate_layout_cost_from_dicts(
@@ -47,10 +35,7 @@ def calculate_layout_cost_from_dicts(
     total_chars: int,
     weights=(1.0, 2.0, 1.5),
 ) -> dict:
-    """
-    coords/fingers/hands 딕셔너리를 직접 받아 비용을 계산한다.
-    Dvorak·Colemak 확장 좌표 계산에 사용.
-    """
+    # Dvorak·Colemak처럼 확장 좌표를 직접 넘길 때 사용
     alpha, beta, gamma = weights
 
     d_base = 0.0
@@ -84,31 +69,6 @@ def calculate_layout_cost_from_dicts(
 
 
 def calculate_layout_cost(layout_str: str, unigram_counts: dict, bigram_counts: dict, total_chars: int, weights=(1.0, 2.0, 1.5)) -> dict:
-    """
-    키보드 배열의 세부 비용을 계산하고 정규화하여 반환한다.
-
-    매개변수
-    --------
-    layout_str : str
-        26자 배열 문자열.
-    unigram_counts : dict
-        문자별 빈도수 딕셔너리.
-    bigram_counts : dict
-        연속 문자쌍별 빈도수 딕셔너리.
-    total_chars : int
-        텍스트 내 알파벳 문자 총 개수.
-    weights : tuple
-        (alpha, beta, gamma) 가중치 튜플.
-
-    반환값
-    ------
-    dict
-        다음 키를 포함하는 딕셔너리:
-            'total_cost' : 최종 합산 비용 (Cost = alpha*D + beta*F + gamma*P)
-            'D'          : 정규화된 이동 거리 비용
-            'F'          : 정규화된 동일 손가락 연타 피로도
-            'P'          : 정규화된 한 손 연속 타건 패널티
-    """
     coords  = layout_str_to_coord_dict(layout_str)
     fingers = layout_str_to_finger_dict(layout_str)
     hands   = layout_str_to_hand_dict(layout_str)

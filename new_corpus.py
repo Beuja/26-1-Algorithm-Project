@@ -1,12 +1,5 @@
 # new_corpus.py
-"""
-교차검증용 새 코퍼스 (corpus.py와 동일 분량, 다른 텍스트).
-출처: Project Gutenberg 공개 도메인 영문 작품
-  - The Great Gatsby (Fitzgerald)
-  - Treasure Island (Stevenson)
-  - Frankenstein (Shelley)
-  - Huckleberry Finn (Twain)
-"""
+# 교차검증용 코퍼스: Gatsby / Treasure Island / Frankenstein / Huckleberry Finn
 
 NEW_CORPUS = """\
 In my younger and more vulnerable years my father gave me some advice
