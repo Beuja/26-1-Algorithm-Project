@@ -38,6 +38,51 @@ def euclidean_distance(p1, p2):
     """두 2D 좌표 사이의 유클리드 거리를 계산한다."""
     return math.sqrt((p1[0] - p2[0])**2 + (p1[1] - p2[1])**2)
 
+def calculate_layout_cost_from_dicts(
+    coords: dict,
+    fingers: dict,
+    hands: dict,
+    unigram_counts: dict,
+    bigram_counts: dict,
+    total_chars: int,
+    weights=(1.0, 2.0, 1.5),
+) -> dict:
+    """
+    coords/fingers/hands 딕셔너리를 직접 받아 비용을 계산한다.
+    Dvorak·Colemak 확장 좌표 계산에 사용.
+    """
+    alpha, beta, gamma = weights
+
+    d_base = 0.0
+    for char, count in unigram_counts.items():
+        if char in coords:
+            d_base += count * euclidean_distance(coords[char], FINGER_HOMES[fingers[char]])
+
+    d_transition = 0.0
+    for (c1, c2), count in bigram_counts.items():
+        if c1 in coords and c2 in coords and fingers[c1] == fingers[c2]:
+            d_transition += count * euclidean_distance(coords[c1], coords[c2])
+
+    total_f = 0.0
+    for (c1, c2), count in bigram_counts.items():
+        if c1 in coords and c2 in coords and c1 != c2 and fingers[c1] == fingers[c2]:
+            total_f += count
+
+    total_p = 0.0
+    for (c1, c2), count in bigram_counts.items():
+        if c1 in coords and c2 in coords and hands[c1] == hands[c2]:
+            total_p += count
+
+    norm = max(1, total_chars)
+    D_norm = (d_base + d_transition) / norm
+    F_norm = total_f / norm
+    P_norm = total_p / norm
+    return {
+        "total_cost": alpha * D_norm + beta * F_norm + gamma * P_norm,
+        "D": D_norm, "F": F_norm, "P": P_norm,
+    }
+
+
 def calculate_layout_cost(layout_str: str, unigram_counts: dict, bigram_counts: dict, total_chars: int, weights=(1.0, 2.0, 1.5)) -> dict:
     """
     키보드 배열의 세부 비용을 계산하고 정규화하여 반환한다.
@@ -64,60 +109,9 @@ def calculate_layout_cost(layout_str: str, unigram_counts: dict, bigram_counts: 
             'F'          : 정규화된 동일 손가락 연타 피로도
             'P'          : 정규화된 한 손 연속 타건 패널티
     """
-    alpha, beta, gamma = weights
-
-    # 배열 문자열을 각종 매핑 딕셔너리로 변환
-    coords = layout_str_to_coord_dict(layout_str)
+    coords  = layout_str_to_coord_dict(layout_str)
     fingers = layout_str_to_finger_dict(layout_str)
-    hands = layout_str_to_hand_dict(layout_str)
-
-    # 1. 이동 거리 (D) 계산
-    # 기본 거리: 각 키를 담당 손가락의 홈포지션에서 얼마나 이동하는지
-    d_base = 0.0
-    for char, count in unigram_counts.items():
-        if char in coords:
-            key_coord = coords[char]
-            finger = fingers[char]
-            home_coord = FINGER_HOMES[finger]
-            d_base += count * euclidean_distance(key_coord, home_coord)
-
-    # 전환 거리: 같은 손가락으로 연속된 두 키를 칠 때의 이동 거리
-    d_transition = 0.0
-    for (c1, c2), count in bigram_counts.items():
-        if c1 in coords and c2 in coords:
-            if fingers[c1] == fingers[c2]:
-                d_transition += count * euclidean_distance(coords[c1], coords[c2])
-
-    total_d = d_base + d_transition
-
-    # 2. 동일 손가락 피로도 (F) 계산
-    # SFB(Same Finger Bigram): 같은 손가락으로 서로 다른 두 키를 연속 타건한 횟수
-    total_f = 0.0
-    for (c1, c2), count in bigram_counts.items():
-        if c1 in coords and c2 in coords and c1 != c2:
-            if fingers[c1] == fingers[c2]:
-                total_f += count
-
-    # 3. 한 손 연속 타건 패널티 (P) 계산
-    # SHB(Same Hand Bigram): 같은 손으로 연속 타건한 횟수
-    total_p = 0.0
-    for (c1, c2), count in bigram_counts.items():
-        if c1 in coords and c2 in coords:
-            if hands[c1] == hands[c2]:
-                total_p += count
-
-    # 타건 1회당 평균 비용으로 정규화
-    norm_factor = max(1, total_chars)
-    D_norm = total_d / norm_factor
-    F_norm = total_f / norm_factor
-    P_norm = total_p / norm_factor
-
-    # 최종 비용 계산
-    total_cost = alpha * D_norm + beta * F_norm + gamma * P_norm
-
-    return {
-        "total_cost": total_cost,
-        "D": D_norm,
-        "F": F_norm,
-        "P": P_norm
-    }
+    hands   = layout_str_to_hand_dict(layout_str)
+    return calculate_layout_cost_from_dicts(
+        coords, fingers, hands, unigram_counts, bigram_counts, total_chars, weights
+    )

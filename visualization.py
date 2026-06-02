@@ -26,6 +26,8 @@ from layouts import (
     layout_str_to_coord_dict,
     visualize_layout,
     QWERTY,
+    DVORAK_COORDS,
+    COLEMAK_COORDS,
 )
 
 # ---------------------------------------------------------------------------
@@ -37,21 +39,10 @@ _KEY_H = 0.70        # 키 높이
 _CMAP = "YlOrRd"     # 히트맵 색상 (노랑 → 주황 → 빨강, 빈도 높을수록 진함)
 
 
-def _draw_keyboard(ax, layout_str: str, color_values: dict, title: str, vmin=None, vmax=None):
+def _draw_keyboard(ax, layout, color_values: dict, title: str, vmin=None, vmax=None):
     """
-    ax 위에 26개 키를 그리고, color_values(문자 → 실수)에 따라 색을 입힌다.
-
-    매개변수
-    --------
-    ax : matplotlib.axes.Axes
-    layout_str : str
-        각 슬롯에 어떤 글자가 배치되는지 나타내는 26자 문자열.
-    color_values : dict
-        {문자: 실수} 형태의 색상 기준값 (예: 정규화된 타건 빈도).
-    title : str
-        그래프 제목.
-    vmin, vmax : float, optional
-        색상 척도 범위. 기본값은 데이터의 최솟값/최댓값.
+    ax 위에 키를 그리고, color_values(문자 → 실수)에 따라 색을 입힌다.
+    layout은 26자 문자열 또는 {문자: (x, y)} 딕셔너리를 모두 허용한다.
     """
     all_vals = list(color_values.values())
     if vmin is None:
@@ -62,7 +53,11 @@ def _draw_keyboard(ax, layout_str: str, color_values: dict, title: str, vmin=Non
     norm = Normalize(vmin=vmin, vmax=vmax)
     cmap = plt.get_cmap(_CMAP)
 
-    coords = layout_str_to_coord_dict(layout_str)
+    # 문자열이면 QWERTY 26슬롯 변환, 딕셔너리면 그대로 사용 (확장 좌표)
+    if isinstance(layout, str):
+        coords = layout_str_to_coord_dict(layout)
+    else:
+        coords = layout
 
     for char, (x, y) in coords.items():
         val = color_values.get(char, 0.0)
@@ -78,7 +73,6 @@ def _draw_keyboard(ax, layout_str: str, color_values: dict, title: str, vmin=Non
         )
         ax.add_patch(rect)
 
-        # 배경 밝기에 따라 글자 색(검정/흰색) 자동 결정
         r, g, b, _ = facecolor
         luminance = 0.299 * r + 0.587 * g + 0.114 * b
         text_color = "black" if luminance > 0.5 else "white"
@@ -99,14 +93,14 @@ def _draw_keyboard(ax, layout_str: str, color_values: dict, title: str, vmin=Non
             fontsize=6.5, color=text_color,
         )
 
-    # 축 스타일 설정
-    ax.set_xlim(-0.7, 9.7)
+    # 확장 레이아웃(Dvorak 등)은 x축 범위를 동적으로 계산
+    xmax = max(x for x, y in coords.values())
+    ax.set_xlim(-0.7, max(9.7, xmax + 0.7))
     ax.set_ylim(-0.65, 2.65)
     ax.set_aspect("equal")
     ax.axis("off")
     ax.set_title(title, fontsize=13, fontweight="bold", pad=10)
 
-    # 색상 막대(컬러바) 추가
     sm = ScalarMappable(cmap=cmap, norm=norm)
     sm.set_array([])
     plt.colorbar(sm, ax=ax, orientation="horizontal", pad=0.02,
@@ -145,8 +139,8 @@ def plot_heatmap(
     total = sum(unigram_counts.values()) or 1
     freq = {char: count / total for char, count in unigram_counts.items()}
 
-    # 코퍼스에 등장하지 않은 문자는 빈도 0으로 채움
-    for ch in layout_str:
+    chars = layout_str.keys() if isinstance(layout_str, dict) else layout_str
+    for ch in chars:
         if ch not in freq:
             freq[ch] = 0.0
 
@@ -194,12 +188,13 @@ def plot_heatmaps_comparison(
     global_vmin = min(freq.values())
     global_vmax = max(freq.values())
 
-    for ax, (name, layout_str) in zip(axes, layouts.items()):
+    for ax, (name, layout) in zip(axes, layouts.items()):
         layout_freq = {}
-        for ch in layout_str:
+        chars = layout.keys() if isinstance(layout, dict) else layout
+        for ch in chars:
             layout_freq[ch] = freq.get(ch, 0.0)
         _draw_keyboard(
-            ax, layout_str, layout_freq,
+            ax, layout, layout_freq,
             title=f"Key Frequency Heatmap — {name}",
             vmin=global_vmin, vmax=global_vmax,
         )

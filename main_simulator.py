@@ -8,8 +8,12 @@
 """
 
 import time
-from layouts import QWERTY, DVORAK, COLEMAK, visualize_layout
-from cost_function import compute_frequencies, calculate_layout_cost
+from layouts import (QWERTY, DVORAK, COLEMAK, visualize_layout,
+                     DVORAK_COORDS, DVORAK_FINGERS, DVORAK_HANDS,
+                     COLEMAK_COORDS, COLEMAK_FINGERS, COLEMAK_HANDS,
+                     _DVORAK_TABLE, _COLEMAK_TABLE, visualize_layout_from_table)
+from cost_function import (compute_frequencies, calculate_layout_cost,
+                           calculate_layout_cost_from_dicts)
 from greedy_algorithm import run_greedy_algorithm
 from genetic_algorithm import run_genetic_algorithm
 from simulated_annealing import run_simulated_annealing
@@ -64,12 +68,20 @@ def run_simulation(
     # 단계 A: 기준 배열 비용 평가
     # ------------------------------------------
     print("[2/5] 기준 배열 비용 평가 중...")
-    for name, layout in [("QWERTY", QWERTY), ("DVORAK", DVORAK), ("COLEMAK", COLEMAK)]:
+    # DVORAK·COLEMAK: 확장 좌표(실제 ';'·','·'.'·'/' 위치 포함)로 계산
+    ref_layouts = [
+        ("QWERTY",  lambda: calculate_layout_cost(QWERTY, unigrams, bigrams, total_chars, weights), QWERTY),
+        ("DVORAK",  lambda: calculate_layout_cost_from_dicts(
+            DVORAK_COORDS, DVORAK_FINGERS, DVORAK_HANDS, unigrams, bigrams, total_chars, weights), DVORAK_COORDS),
+        ("COLEMAK", lambda: calculate_layout_cost_from_dicts(
+            COLEMAK_COORDS, COLEMAK_FINGERS, COLEMAK_HANDS, unigrams, bigrams, total_chars, weights), COLEMAK_COORDS),
+    ]
+    for name, cost_fn, layout_str in ref_layouts:
         t0 = time.time()
-        cost_details = calculate_layout_cost(layout, unigrams, bigrams, total_chars, weights)
+        cost_details = cost_fn()
         elapsed = time.time() - t0
         results[name] = {
-            "layout": layout,
+            "layout": layout_str,
             "cost": cost_details["total_cost"],
             "D": cost_details["D"],
             "F": cost_details["F"],
@@ -175,7 +187,12 @@ def run_simulation(
     best_name, best_data = sorted_layouts[0]
     print(f"[BEST] 최적 탐색 배열: {best_name}")
     print(f"비용: {best_data['cost']:.5f} (QWERTY 대비 {((qwerty_cost - best_data['cost']) / qwerty_cost) * 100:.2f}% 개선)")
-    print(visualize_layout(best_data["layout"]))
+    _layout = best_data["layout"]
+    if isinstance(_layout, str):
+        print(visualize_layout(_layout))
+    else:
+        _table = _DVORAK_TABLE if best_name == "DVORAK" else _COLEMAK_TABLE
+        print(visualize_layout_from_table(_table))
     print("=" * 70)
 
     # ==========================================

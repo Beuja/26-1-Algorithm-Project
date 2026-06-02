@@ -17,8 +17,12 @@ from matplotlib.cm import ScalarMappable
 
 from corpus import load_corpus
 from new_corpus import NEW_CORPUS
-from cost_function import compute_frequencies, calculate_layout_cost
-from layouts import QWERTY, DVORAK, COLEMAK, visualize_layout, layout_str_to_coord_dict
+from cost_function import (compute_frequencies, calculate_layout_cost,
+                           calculate_layout_cost_from_dicts)
+from layouts import (QWERTY, DVORAK, COLEMAK, visualize_layout, layout_str_to_coord_dict,
+                     DVORAK_COORDS, DVORAK_FINGERS, DVORAK_HANDS,
+                     COLEMAK_COORDS, COLEMAK_FINGERS, COLEMAK_HANDS,
+                     _DVORAK_TABLE, _COLEMAK_TABLE)
 from greedy_algorithm import run_greedy_algorithm
 from simulated_annealing import run_simulated_annealing
 from genetic_algorithm import run_genetic_algorithm
@@ -64,22 +68,33 @@ ga_layout, ga_cost, ga_hist, ga_calls = run_genetic_algorithm(
 print(f"  완료 ({time.time()-t0:.2f}s) | 비용: {ga_cost['total_cost']:.5f} | 호출: {ga_calls:,}회\n")
 
 # 6개 배열 정의
+# Dvorak·Colemak은 시각화용 coords dict, 나머지는 26자 문자열
 LAYOUTS = {
     "QWERTY":      QWERTY,
-    "Dvorak":      DVORAK,
-    "Colemak":     COLEMAK,
+    "Dvorak":      DVORAK_COORDS,   # 확장 좌표 dict (실제 물리 위치)
+    "Colemak":     COLEMAK_COORDS,  # 확장 좌표 dict (실제 물리 위치)
     "Greedy":      greedy_layout,
     "Sim.Anneal.": sa_layout,
     "Gen.Algo.":   ga_layout,
+}
+# Dvorak·Colemak 확장 비용 계산용 매핑
+_EXTENDED = {
+    "Dvorak":  (DVORAK_COORDS,  DVORAK_FINGERS,  DVORAK_HANDS),
+    "Colemak": (COLEMAK_COORDS, COLEMAK_FINGERS, COLEMAK_HANDS),
 }
 
 # ──────────────────────────────────────────────
 # 2. corpus 비용 계산
 # ──────────────────────────────────────────────
+def _calc_cost(name, layout, uni, bi, tot):
+    if name in _EXTENDED:
+        coords, fingers, hands = _EXTENDED[name]
+        return calculate_layout_cost_from_dicts(coords, fingers, hands, uni, bi, tot, WEIGHTS)
+    return calculate_layout_cost(layout, uni, bi, tot, WEIGHTS)
+
 corpus_results = {}
 for name, layout in LAYOUTS.items():
-    cd = calculate_layout_cost(layout, uni_c, bi_c, tot_c, WEIGHTS)
-    corpus_results[name] = cd
+    corpus_results[name] = _calc_cost(name, layout, uni_c, bi_c, tot_c)
 
 # ──────────────────────────────────────────────
 # 3. new corpus 비용 계산
@@ -93,7 +108,7 @@ print(f"  new corpus 알파벳 수: {tot_n:,}\n")
 
 new_results = {}
 for name, layout in LAYOUTS.items():
-    cd = calculate_layout_cost(layout, uni_n, bi_n, tot_n, WEIGHTS)
+    cd = _calc_cost(name, layout, uni_n, bi_n, tot_n)
     new_results[name] = cd
     print(f"  {name:<12}: {cd['total_cost']:.5f}")
 
@@ -107,9 +122,17 @@ ROW_COLORS = {
 }
 KEY_W, KEY_H = 0.85, 0.70
 
-def draw_layout_diagram(ax, layout_str, title):
-    coords = layout_str_to_coord_dict(layout_str)
-    for i, (char, (x, y)) in enumerate(coords.items()):
+def draw_layout_diagram(ax, layout, title):
+    # layout이 문자열이면 26슬롯 변환, dict이면 그대로 사용 (확장 좌표)
+    if isinstance(layout, str):
+        coords = layout_str_to_coord_dict(layout)
+    else:
+        coords = layout  # {char: (x, y)} dict
+
+    xmax = max(x for x, y in coords.values())
+    xlim_max = max(9.7, xmax + 0.7)
+
+    for char, (x, y) in coords.items():
         if y == 2.0:
             fc = ROW_COLORS["top"]
         elif y == 1.0:
@@ -126,7 +149,7 @@ def draw_layout_diagram(ax, layout_str, title):
         ax.text(x, y, char.upper(), ha="center", va="center",
                 fontsize=13, fontweight="bold", color="#1a1a1a")
 
-    ax.set_xlim(-0.7, 9.7)
+    ax.set_xlim(-0.7, xlim_max)
     ax.set_ylim(-0.6, 2.6)
     ax.set_aspect("equal")
     ax.axis("off")
